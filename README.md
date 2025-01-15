@@ -28,5 +28,5 @@ Run the client with arguments for the server.
 
 ```bash
 source .venv/bin/activate
-uv run client.py npx -y @modelcontextprotocol/server-filesystem /Users/yuusuke-kawatsu/Desktop/
+uv run client.py npx -y @modelcontextprotocol/server-filesystem "/Users/{username}/Desktop/"
 ```
