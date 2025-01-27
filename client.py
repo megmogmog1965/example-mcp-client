@@ -11,6 +11,74 @@ from dotenv import load_dotenv
 load_dotenv()  # load environment variables from .env
 
 
+class TeeStdin:
+    """
+    MCP Client ⇔ Server 間のプロセス間通信（標準入出力）を盗み見る PIPE.
+    """
+
+    def __init__(self, original_stdin):
+        self._stdin = original_stdin
+
+    async def __aenter__(self):
+        await self._stdin.__aenter__()
+        return self
+
+    async def __aexit__(self, *args):
+        await self._stdin.__aexit__(*args)
+
+    def __aiter__(self):
+        self._stdin.__aiter__()
+        return self
+
+    async def __anext__(self):
+        receive_stream = await self._stdin.__anext__()
+        print('_' * 16)
+        print(receive_stream)
+        print('_' * 16)
+        return receive_stream
+
+    def __getattr__(self, name):
+        return getattr(self._stdin, name)
+
+
+class TeeWrite:
+    """
+    MCP Client ⇔ Server 間のプロセス間通信（標準入出力）を盗み見る PIPE.
+    """
+
+    def __init__(self, original_write):
+        self._write = original_write
+
+    def send_nowait(self, item):
+        print('_' * 16)
+        print(item)
+        print('_' * 16)
+        self._write.send_nowait(item)
+
+    async def send(self, *args):
+        print('_' * 16)
+        print(args[0])
+        print('_' * 16)
+        await self._write.send(*args)
+
+    async def __aenter__(self):
+        await self._write.__aenter__()
+        return self
+
+    async def __aexit__(self, *args):
+        await self._write.__aexit__(*args)
+
+    def __aiter__(self):
+        self._write.__aiter__()
+        return self
+
+    async def __anext__(self):
+        return await self._write.__anext__()
+
+    def __getattr__(self, name):
+        return getattr(self._write, name)
+
+
 class MCPClient:
     def __init__(self):
         # Initialize session and client objects
@@ -33,6 +101,10 @@ class MCPClient:
 
         stdio_transport = await self.exit_stack.enter_async_context(stdio_client(server_params))
         self.stdio, self.write = stdio_transport
+
+        self.stdio = TeeStdin(self.stdio)
+        self.write = TeeWrite(self.write)
+
         self.session = await self.exit_stack.enter_async_context(ClientSession(self.stdio, self.write))
 
         await self.session.initialize()
