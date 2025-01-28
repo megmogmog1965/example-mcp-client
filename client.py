@@ -1,3 +1,4 @@
+import json
 import asyncio
 from typing import Optional
 from contextlib import AsyncExitStack
@@ -33,7 +34,7 @@ class TeeStdin:
     async def __anext__(self):
         receive_stream = await self._stdin.__anext__()
         print('_' * 16)
-        print(receive_stream)
+        print(json.dumps(receive_stream.root.__dict__))
         print('_' * 16)
         return receive_stream
 
@@ -51,13 +52,14 @@ class TeeWrite:
 
     def send_nowait(self, item):
         print('_' * 16)
-        print(item)
+        print(json.dumps(item.root.__dict__))
         print('_' * 16)
         self._write.send_nowait(item)
 
     async def send(self, *args):
         print('_' * 16)
-        print(args[0])
+        print(json.dumps(args[0].root.__dict__))
+        # print(args[0])
         print('_' * 16)
         await self._write.send(*args)
 
